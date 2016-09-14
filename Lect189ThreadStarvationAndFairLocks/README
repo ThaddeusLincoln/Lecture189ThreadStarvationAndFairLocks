@@ -1,0 +1,125 @@
+STARVATION doesn't means that a Thread will never progress because they will 
+never get a lock, but that they rarely have the opportunity to run and progress. 
+So STARVATION rarely occurs due to thread priority. When we assign a high priority 
+to a thread we're suggesting to the Operating System that it should try and 
+run the thread before other waiting-threads. 
+
+Having into account that when using a synchronized block, is not about first 
+come first serve. When there's more than one thread waiting for a lock and that 
+lock becomes available the Operating System won't necessarily choose the thread 
+that has been waiting the longest to run. A thread can block on the lock first 
+but that doesn't mean it will be the first thread to run when the lock 
+becomes available. So, it's possible that the thread won't be able to run for a 
+long time because other threads keep blocking on the lock, and when the lock 
+becomes available the Operating System chooses one of those other threads to run 
+specially when one of the other threads has a higher priority than the first 
+thread that blocked. 
+
+NOTE : also need to remember that the setPriority() is a suggestion to the OS, 
+it's not actually binding in any way. We can never force the Operating System 
+to run threads in a specific order.
+
+NOTE: In the example the whose lock is used is a static object, so there's 
+a unique instance of it that will be shared. And although the lock is released 
+frequently, often the highest priority thread will probably hog all the time 
+until it's finished counting and the next thread that runs won't necessarily 
+be the thread with the closest priority. Also the last thread to terminate 
+won't necessarily be the thread with the lesser priority. In this happens 
+in a real life application, let's assume that the thread that can never get 
+the lock is a query to a data base, etc, the performance of the application 
+would be seriously affected. 
+
+Will it be STARVATION if we don't set priorities? It could be, although 
+setting priorities makes STARVATION more likely to happen.
+
+How can we prevent STARVATION : for instance when dealing with DEADLOCKS 
+the order in which the locks are required was important, but in the case 
+of STARVATION which thread gets to run when a lock becomes available 
+is important. Ideally would be "first come first served", but as we can't 
+guarantee priorities we can't guarantee the "first come first served" neither, 
+but we can try some things, like using FAIR-LOCKS instead of synchronized locks.
+
+
+LECTURE 190 : Fair Locks & Live Locks =======================================
+
+FAIR LOCKS : try to be fair, and it'll try to be "first come first serve".
+
+REENTRANT-LOCK class implements the Lock interface, the Reentrant Lock 
+implementation allows us to create fair locks, not all locks implementations 
+do that. The interface doesn't dictate that locks have to be fair, 
+so we have to keep consulting the Doc to be sure of what type of lock it's.
+
+new ReentrantLock(true); // the parameter true indicates that it'll be fair.
+
+NOTE : only fairness in acquiring the lock is guaranteed, not fairness in threads 
+scheduling. So it's possible that the thread that gets the lock will execute a 
+task that takes long time. When using a fair lock is possible for threads to still 
+have to wait a long time to run. The only thing a FAIR-LOCK guarantees is the 
+"first come first serve" ordering for getting the lock.
+
+Also note, that the try/lock method doesn't honor the fairness settings 
+so it will not be FCFS. And last remark, when using a FAIR LOCK with a lot 
+of threads keep in mind that performance will be impacted, because in order 
+to ensure fairness there has to be an extra layer of processing that manages 
+which thread gets the lock so that can ultimately slow things down.
+
+SYNCHRONIZED BLOCKS vs FAIR BLOCKS:
+
+We'll use synchronized blocks when knowing the our application uses few 
+threads (2 o 3) or the task that runs on each thread complete very quickly, 
+or we know from the application's architecture that it will be rare for more 
+than one thread to be blocked on a lock  at a time, in those cases, 
+STARVATION may not actually be an issue.  
+
+Also since using FAIR-LOCKS can impact performance we might actually decide 
+that STARVATION will be the lesser of two evils. So depending on the task that 
+the threads are performing it might actually not matter if a tread is 
+waiting for a long time. 
+
+For instance we might have multiple threads pulling data of the same queue 
+and we won't actually care which thread pull up the data as long as 
+it's done quickly. So in that situation using synchronize blocks would 
+be preferable.
+
+LIVE LOCKS ==================
+
+Another potential problem we might find when working with threads is LIVE LOCKS: 
+which are similar to deadlocks, but instead of the threads been blocked they're 
+actually constantly active and and usually waiting for all the other 
+threads to complete their tasks. Now, since the other threads are waiting 
+for others to complete none of them can actually progress. An example would be 
+if thread-A will loop until thread-B completes its task, and that thread-B the 
+same (it would loop until thread-A completes its task). 
+So none, of them would actually progress. 
+
+The previous defines what a LIVE LOCK is, the threads will not progress, 
+but they're not actually block. 
+
+NOTE : there isn't an standard solution for LIVE LOCKS, is pretty much as stack 
+overflow errors. But we have to notice that the LIVE LOCK risk not necessarily 
+happens associated to loops, is a condition we have to be aware of when writing 
+code that uses multiple threads. Any time that a thread has to wait for another 
+to complete something and they don't block while they wait there's a potential 
+for LIVE LOCK.
+
+SLIPPED CONDITION =====================================
+
+SLIPPED CONDITION : is a type of race condition (aka thread interference) and it 
+can occurs when a thread can be suspended between reading a condition and acting 
+up on that condition. 
+
+Because threads can interfere with each other when checking and setting a condition, 
+a given thread can attempt to do something based on obsolete information. 
+For instance it could have checked information in a buffer, resulting at the
+ moment as OK. But by the time it acted on the condition previously checked as OK, 
+ the status had been updated by another thread. Unfortunately the initial thread 
+ doesn't see the updated information, and because of that it does something erroneous. 
+
+Being the SLIPPED-CONDITION a particular case of RACE CONDITION the solution 
+for both is the same: use synchronized blocks or locks to synchronize critical 
+sections of code. If the code is already synchronized, then maybe the placement 
+of the synchronization may be causing the problem. 
+
+When using multiple locks, the order in which the locks can be acquired can 
+also result in a slipped condition.
+
